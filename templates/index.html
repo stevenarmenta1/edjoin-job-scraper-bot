@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edjoin Hunter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        body { background-color: #f4f6f9; padding: 20px; font-family: 'Segoe UI', sans-serif; }
+        
+        /* Header Styling */
+        .header-area { 
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); 
+            color: white; padding: 25px; border-radius: 10px; margin-bottom: 25px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        /* Search Bar Styling */
+        .search-box {
+            border-radius: 30px; border: none; padding: 15px 25px; width: 100%;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-size: 1.1rem;
+        }
+
+        /* Job Card Styling */
+        .job-card { 
+            background: white; border: none; border-radius: 8px; 
+            margin-bottom: 15px; padding: 20px; 
+            border-left: 6px solid #ddd; 
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .job-card:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
+
+        /* Location Colors */
+        .loc-San { border-left-color: #ffc107; } /* Yellow */
+        .loc-Riverside { border-left-color: #28a745; } /* Green */
+        .loc-Orange { border-left-color: #fd7e14; } /* Orange */
+        .loc-Los { border-left-color: #17a2b8; } /* Blue */
+
+        /* Text Styles */
+        .job-title a { color: #2c3e50; text-decoration: none; font-weight: 700; }
+        .job-title a:hover { color: #0056b3; }
+        
+        /* High Salary Highlight Class */
+        .high-pay { color: #008000; font-weight: bold; background-color: #e8f5e9; padding: 2px 6px; border-radius: 4px; }
+        
+        .deadline-urgent { color: #d9534f; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-area">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h1 class="mb-1"><i class="fas fa-crosshairs"></i> Job Hunter</h1>
+                <small>Tracking San Bernardino, Riverside, Orange, LA</small>
+            </div>
+            <div class="col-md-6 text-end">
+                <h2 id="visible-count">{{ count }}</h2>
+                <small>Jobs Listed</small>
+                <div><a href="/" class="btn btn-outline-light btn-sm mt-2">Refresh Data</a></div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <input type="text" id="jobSearch" class="search-box" placeholder="🔍 Filter jobs... (e.g., 'Technician', 'Manager', 'Irvine')">
+            </div>
+        </div>
+    </div>
+
+    <div id="jobList">
+        {% for job in jobs %}
+        <div class="job-card loc-{{ job.location.split(' ')[0] }} search-item">
+            <div class="row align-items-center">
+                <div class="col-md-9">
+                    <div class="mb-1">
+                        <span class="badge bg-secondary">{{ job.location }}</span>
+                        <span class="text-muted ms-2"><i class="far fa-building"></i> {{ job.district }}</span>
+                    </div>
+                    
+                    <h5 class="job-title h4">
+                        <a href="{{ job.url }}" target="_blank">{{ job.title }}</a>
+                    </h5>
+
+                    <div class="mt-3">
+                        <span class="me-4"><i class="fas fa-money-bill-wave text-secondary"></i> <span class="salary-val">{{ job.salary }}</span></span>
+                        
+                        <span><i class="far fa-clock text-secondary"></i> 
+                            <span class="{{ 'deadline-urgent' if 'Imme' in job.deadline or 'Until' in job.deadline else '' }}">
+                                {{ job.deadline }}
+                            </span>
+                        </span>
+                    </div>
+                </div>
+                <div class="col-md-3 text-end">
+                    <a href="{{ job.url }}" target="_blank" class="btn btn-primary rounded-pill px-4">Apply <i class="fas fa-external-link-alt ms-1"></i></a>
+                </div>
+            </div>
+            <span class="d-none search-data">{{ job.title }} {{ job.district }} {{ job.location }} {{ job.salary }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div id="noResults" class="alert alert-info text-center" style="display:none;">
+        No jobs match your filter.
+    </div>
+</div>
+
+<script>
+    // 1. LIVE SEARCH FUNCTION
+    document.getElementById('jobSearch').addEventListener('keyup', function() {
+        let filter = this.value.toLowerCase();
+        let cards = document.querySelectorAll('.search-item');
+        let visibleCount = 0;
+        let hasResults = false;
+
+        cards.forEach(function(card) {
+            let text = card.querySelector('.search-data').innerText.toLowerCase();
+            if (text.includes(filter)) {
+                card.style.display = "";
+                visibleCount++;
+                hasResults = true;
+            } else {
+                card.style.display = "none";
+            }
+        });
+
+        // Update the counter
+        document.getElementById('visible-count').innerText = visibleCount;
+        
+        // Show "No results" if needed
+        document.getElementById('noResults').style.display = hasResults ? "none" : "block";
+    });
+
+    // 2. AUTO-HIGHLIGHT HIGH SALARIES
+    // This looks for keywords like "$100,000" or "$8,000" (monthly) and highlights them
+    document.querySelectorAll('.salary-val').forEach(function(el) {
+        let text = el.innerText;
+        // Simple logic: if it contains "1xx,xxx" or high monthly amounts
+        if (text.includes('$1') && text.length > 8) { // likely 100k+
+            el.classList.add('high-pay');
+        }
+        if (text.includes('Month') && text.includes('$8') || text.includes('$9')) {
+            el.classList.add('high-pay');
+        }
+    });
+</script>
+
+</body>
+</html>
