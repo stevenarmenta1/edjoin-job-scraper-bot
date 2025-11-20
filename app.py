@@ -23,7 +23,7 @@ def get_jobs_with_browser():
     chrome_options.add_argument("--headless") 
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-dev-shm-usage") # Added for stability
     
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=chrome_options)
@@ -52,8 +52,7 @@ def get_jobs_with_browser():
                     full_link = f"https://www.edjoin.org{href}"
                     title = link.get_text(strip=True)
                     
-                    # EXTRACT ID for sorting (e.g., from "/Home/JobPosting/1955433")
-                    # We strip out the number so we can sort mathematically later
+                    # EXTRACT ID for sorting
                     try:
                         job_id = int(href.split("/")[-1])
                     except:
@@ -62,8 +61,7 @@ def get_jobs_with_browser():
                     if not title or full_link in seen_urls:
                         continue
 
-                    # --- DATA EXTRACTION (Using your specific classes) ---
-                    # Find the container card
+                    # --- DATA EXTRACTION ---
                     card = link.find_parent(lambda tag: tag.name == 'div' and tag.find(class_='salary-p'))
                     
                     salary = "Salary not listed"
@@ -87,13 +85,12 @@ def get_jobs_with_browser():
                         if district_tag:
                             district = district_tag.get_text(strip=True)
                         else:
-                            # Fallback logic
                             all_text = list(card.stripped_strings)
                             if len(all_text) > 1 and "$" not in all_text[1] and "Deadline" not in all_text[1]:
                                 district = all_text[1]
 
                     all_jobs.append({
-                        'id': job_id,  # We store the ID here to sort later
+                        'id': job_id,
                         'title': title,
                         'url': full_link,
                         'location': city,
@@ -114,10 +111,22 @@ def get_jobs_with_browser():
         driver.quit()
         print("Browser closed.")
 
-    # --- THE SORTING MAGIC ---
-    # Sort the entire list by 'id' in descending order (Newest IDs are higher numbers)
-    print("Sorting all jobs by Newest first...")
-    all_jobs.sort(key=lambda x: x['id'], reverse=True)
+    # --- THE SORTING MAGIC (UPDATED) ---
+    
+    # 1. Define the specific priority order (Lower number = Higher priority)
+    location_priority = {
+        "San Bernardino": 1,
+        "Riverside": 2,
+        "Orange": 3,
+        "Los Angeles": 4
+    }
+    
+    print("Sorting by Location Priority (SB -> Riv -> Org -> LA)...")
+    
+    # 2. Sort by two keys:
+    #    First Key: The Location Priority (1, 2, 3, 4)
+    #    Second Key: The Job ID (Negative sign means Descending/Newest first)
+    all_jobs.sort(key=lambda x: (location_priority.get(x['location'], 99), -x['id']))
 
     return all_jobs
 
