@@ -21,6 +21,28 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-size: 1.1rem;
         }
 
+        /* Sort Controls */
+        .sort-controls {
+            margin: 20px 0; display: flex; gap: 10px; flex-wrap: wrap;
+            padding: 15px; background-color: white; border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .sort-controls button {
+            padding: 8px 16px; background-color: #2a5298; color: white;
+            border: none; border-radius: 20px; cursor: pointer; font-size: 13px;
+            transition: all 0.3s ease;
+        }
+
+        .sort-controls button:hover {
+            background-color: #1e3c72; transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .sort-controls button.active {
+            background-color: #ffc107; color: black; font-weight: bold;
+        }
+
         /* Job Card Styling */
         .job-card { 
             background: white; border: none; border-radius: 8px; 
@@ -70,9 +92,24 @@
         </div>
     </div>
 
+    <!-- SORT CONTROLS -->
+    <div class="sort-controls">
+        <strong style="align-self: center; margin-right: 10px;">Sort by:</strong>
+        <button onclick="sortAndFilter('location')" class="sort-btn" data-sort="location">📍 Location</button>
+        <button onclick="sortAndFilter('title')" class="sort-btn" data-sort="title">📋 Job Title</button>
+        <button onclick="sortAndFilter('salary')" class="sort-btn" data-sort="salary">💰 Salary (High-Low)</button>
+        <button onclick="sortAndFilter('deadline')" class="sort-btn" data-sort="deadline">📅 Deadline</button>
+        <button onclick="sortAndFilter('default')" class="sort-btn active" data-sort="default">🔄 Default</button>
+    </div>
+
     <div id="jobList">
         {% for job in jobs %}
-        <div class="job-card loc-{{ job.location.split(' ')[0] }} search-item">
+        <div class="job-card loc-{{ job.location.split(' ')[0] }} search-item"
+             data-location="{{ job.location }}"
+             data-title="{{ job.title }}"
+             data-salary="{{ job.salary }}"
+             data-deadline="{{ job.deadline }}"
+             data-district="{{ job.district }}">
             <div class="row align-items-center">
                 <div class="col-md-9">
                     <div class="mb-1">
@@ -109,43 +146,110 @@
 </div>
 
 <script>
-    // 1. LIVE SEARCH FUNCTION
-    document.getElementById('jobSearch').addEventListener('keyup', function() {
-        let filter = this.value.toLowerCase();
-        let cards = document.querySelectorAll('.search-item');
+    let currentSort = 'default';
+    let jobsArray = [];
+
+    // Initialize jobs array from DOM
+    function initializeJobs() {
+        jobsArray = Array.from(document.querySelectorAll('.search-item')).map(card => ({
+            element: card,
+            location: card.dataset.location,
+            title: card.dataset.title,
+            salary: card.dataset.salary,
+            deadline: card.dataset.deadline,
+            district: card.dataset.district
+        }));
+    }
+
+    // Extract number from salary string
+    function extractSalaryNumber(salaryStr) {
+        const match = salaryStr.match(/\d+,?\d*/);
+        return match ? parseInt(match[0].replace(',', '')) : 0;
+    }
+
+    // Sort jobs
+    function sortJobs(sortType) {
+        let sorted = [...jobsArray];
+
+        switch(sortType) {
+            case 'location':
+                sorted.sort((a, b) => a.location.localeCompare(b.location));
+                break;
+            case 'title':
+                sorted.sort((a, b) => a.title.localeCompare(b.title));
+                break;
+            case 'salary':
+                sorted.sort((a, b) => extractSalaryNumber(b.salary) - extractSalaryNumber(a.salary));
+                break;
+            case 'deadline':
+                sorted.sort((a, b) => {
+                    const dateA = new Date(a.deadline) || new Date(9999, 0, 0);
+                    const dateB = new Date(b.deadline) || new Date(9999, 0, 0);
+                    return dateA - dateB;
+                });
+                break;
+            case 'default':
+                sorted = [...jobsArray];
+                break;
+        }
+
+        return sorted;
+    }
+
+    // Apply sorting and filtering
+    function sortAndFilter(sortType) {
+        currentSort = sortType;
+        const sorted = sortJobs(sortType);
+        const jobList = document.getElementById('jobList');
+        const filter = document.getElementById('jobSearch').value.toLowerCase();
+
+        jobList.innerHTML = '';
         let visibleCount = 0;
         let hasResults = false;
 
-        cards.forEach(function(card) {
-            let text = card.querySelector('.search-data').innerText.toLowerCase();
-            if (text.includes(filter)) {
-                card.style.display = "";
+        sorted.forEach(job => {
+            const searchText = job.element.querySelector('.search-data').innerText.toLowerCase();
+            const shouldShow = searchText.includes(filter);
+
+            job.element.style.display = shouldShow ? "" : "none";
+            jobList.appendChild(job.element);
+
+            if (shouldShow) {
                 visibleCount++;
                 hasResults = true;
-            } else {
-                card.style.display = "none";
             }
         });
 
-        // Update the counter
         document.getElementById('visible-count').innerText = visibleCount;
-        
-        // Show "No results" if needed
         document.getElementById('noResults').style.display = hasResults ? "none" : "block";
+
+        // Update active button
+        document.querySelectorAll('.sort-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.sort === sortType) {
+                btn.classList.add('active');
+            }
+        });
+    }
+
+    // 1. LIVE SEARCH FUNCTION
+    document.getElementById('jobSearch').addEventListener('keyup', function() {
+        sortAndFilter(currentSort);
     });
 
     // 2. AUTO-HIGHLIGHT HIGH SALARIES
-    // This looks for keywords like "$100,000" or "$8,000" (monthly) and highlights them
     document.querySelectorAll('.salary-val').forEach(function(el) {
         let text = el.innerText;
-        // Simple logic: if it contains "1xx,xxx" or high monthly amounts
-        if (text.includes('$1') && text.length > 8) { // likely 100k+
+        if (text.includes('$1') && text.length > 8) {
             el.classList.add('high-pay');
         }
-        if (text.includes('Month') && text.includes('$8') || text.includes('$9')) {
+        if ((text.includes('$8') || text.includes('$9')) && text.includes('Month')) {
             el.classList.add('high-pay');
         }
     });
+
+    // Initialize on load
+    window.addEventListener('load', initializeJobs);
 </script>
 
 </body>
