@@ -111,22 +111,20 @@ def get_jobs_with_browser():
         driver.quit()
         print("Browser closed.")
 
-    # --- THE SORTING MAGIC (UPDATED) ---
+    # --- THE SORTING MAGIC (UPDATED TO REMOVE LOCATION SORT) ---
     
-    # 1. Define the specific priority order (Lower number = Higher priority)
-    location_priority = {
-        "San Bernardino": 1,
-        "Riverside": 2,
-        "Orange": 3,
-        "Los Angeles": 4
-    }
+    # 1. REMOVE location_priority dictionary (not needed)
+    # location_priority = {
+    #     "San Bernardino": 1,
+    #     "Riverside": 2,
+    #     "Orange": 3,
+    #     "Los Angeles": 4
+    # }
     
-    print("Sorting by Location Priority (SB -> Riv -> Org -> LA)...")
+    print("Sorting by Job ID (Newest First) regardless of location...")
     
-    # 2. Sort by two keys:
-    #    First Key: The Location Priority (1, 2, 3, 4)
-    #    Second Key: The Job ID (Negative sign means Descending/Newest first)
-    all_jobs.sort(key=lambda x: (location_priority.get(x['location'], 99), -x['id']))
+    # 2. Sort by ONLY the Job ID (Negative sign means Descending/Newest first)
+    all_jobs.sort(key=lambda x: -x['id'])
 
     return all_jobs
 

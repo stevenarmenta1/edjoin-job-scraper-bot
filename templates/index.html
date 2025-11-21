@@ -75,7 +75,7 @@
     <div class="header-area">
         <div class="row align-items-center">
             <div class="col-md-6">
-                <h1 class="mb-1"><i class="fas fa-crosshairs"></i> Job Hunter</h1>
+                <h2 class="mb-1"><i class="fas fa-spider"></i> SOCAL School Tech Jobs Crawler</h2>
                 <small>Tracking San Bernardino, Riverside, Orange, LA</small>
             </div>
             <div class="col-md-6 text-end">
@@ -95,11 +95,11 @@
     <!-- SORT CONTROLS -->
     <div class="sort-controls">
         <strong style="align-self: center; margin-right: 10px;">Sort by:</strong>
+        <button onclick="sortAndFilter('default')" class="sort-btn active" data-sort="default">🔄 Default</button>
         <button onclick="sortAndFilter('location')" class="sort-btn" data-sort="location">📍 Location</button>
         <button onclick="sortAndFilter('title')" class="sort-btn" data-sort="title">📋 Job Title</button>
         <button onclick="sortAndFilter('salary')" class="sort-btn" data-sort="salary">💰 Salary (High-Low)</button>
         <button onclick="sortAndFilter('deadline')" class="sort-btn" data-sort="deadline">📅 Deadline</button>
-        <button onclick="sortAndFilter('default')" class="sort-btn active" data-sort="default">🔄 Default</button>
     </div>
 
     <div id="jobList">
@@ -169,7 +169,7 @@
 
     // Sort jobs
     function sortJobs(sortType) {
-        let sorted = [...jobsArray];
+        let sorted = jobsArray;
 
         switch(sortType) {
             case 'location':
@@ -189,7 +189,7 @@
                 });
                 break;
             case 'default':
-                sorted = [...jobsArray];
+                sorted = jobsArray;
                 break;
         }
 
