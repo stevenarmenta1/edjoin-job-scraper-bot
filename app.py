@@ -1,12 +1,68 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, redirect, url_for, request, flash, session
+from dotenv import load_dotenv
+load_dotenv()
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+import json
+import os
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 import time
+from flask_dance.contrib.google import make_google_blueprint, google
+
 
 app = Flask(__name__)
+app.secret_key = 'replace-this-with-a-secret-key'  # Needed for session management
+
+# --- Google OAuth Setup ---
+# You must set these environment variables or replace with your credentials
+import os
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', 'your-google-client-id')
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', 'your-google-client-secret')
+google_bp = make_google_blueprint(
+    client_id=GOOGLE_CLIENT_ID,
+    client_secret=GOOGLE_CLIENT_SECRET,
+    scope=["profile", "email"],
+    redirect_url="/login/google/authorized"
+)
+app.register_blueprint(google_bp, url_prefix="/login")
+
+# --- Flask-Login Setup ---
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+
+# --- Persistent User Store (JSON file) ---
+USERS_FILE = 'users.json'
+def load_users():
+    if os.path.exists(USERS_FILE):
+        with open(USERS_FILE, 'r') as f:
+            return json.load(f)
+    return {'testuser': {'password': 'testpass'}}
+
+def save_users(users):
+    with open(USERS_FILE, 'w') as f:
+        json.dump(users, f)
+
+USERS = load_users()
+
+class User(UserMixin):
+    def __init__(self, username):
+        self.id = username
+
+    def get_id(self):
+        return self.id
+
+@login_manager.user_loader
+def load_user(user_id):
+    global USERS
+    USERS = load_users()
+    if user_id in USERS:
+        return User(user_id)
+    return None
 
 # Dictionary of locations
 LOCATIONS = {
@@ -129,9 +185,79 @@ def get_jobs_with_browser():
     return all_jobs
 
 @app.route('/')
+
+@app.route('/')
+@login_required
 def home():
     job_list = get_jobs_with_browser()
     return render_template('index.html', jobs=job_list, count=len(job_list))
+
+
+# --- Register Route ---
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        confirm = request.form.get('confirm')
+        global USERS
+        USERS = load_users()
+        if not username or not password:
+            flash('Username and password required', 'danger')
+        elif username in USERS:
+            flash('Username already exists', 'danger')
+        elif password != confirm:
+            flash('Passwords do not match', 'danger')
+        else:
+            USERS[username] = {'password': password}
+            save_users(USERS)
+            flash('Registration successful! Please log in.', 'success')
+            return redirect(url_for('login'))
+    return render_template('register.html')
+
+
+# --- Google OAuth Login Route ---
+@app.route('/login/google')
+def login_google():
+    if not google.authorized:
+        return redirect(url_for('google.login'))
+    resp = google.get("/oauth2/v2/userinfo")
+    if resp.ok:
+        user_info = resp.json()
+        username = user_info["email"]
+        global USERS
+        USERS = load_users()
+        if username not in USERS:
+            USERS[username] = {"password": "oauth"}
+            save_users(USERS)
+        login_user(User(username))
+        flash(f"Logged in as {username}", "success")
+        return redirect(url_for('home'))
+    flash("Failed to log in with Google", "danger")
+    return redirect(url_for('login'))
+
+# --- Login Route ---
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        global USERS
+        USERS = load_users()
+        user = USERS.get(username)
+        if user and user['password'] == password:
+            login_user(User(username))
+            return redirect(url_for('home'))
+        else:
+            flash('Invalid username or password', 'danger')
+    return render_template('login.html')
+
+# --- Logout Route ---
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

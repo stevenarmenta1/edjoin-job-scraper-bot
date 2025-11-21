@@ -1,0 +1,12 @@
+# Ignore Python cache and environment
+__pycache__/
+.venv/
+*.pyc
+
+# Ignore dotenv and credential files
+.env
+client_secret_*.json
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
