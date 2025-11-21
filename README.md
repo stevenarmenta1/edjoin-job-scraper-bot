@@ -7,10 +7,10 @@ It launches a headless Chrome browser, parses listings with BeautifulSoup, and d
 ## 🚀 Features
 
 ### 🌎 Scrapes job postings from:
-* 🟦 **San Bernardino County** (Priority #1)
-* 🟩 **Riverside County** (Priority #2)
-* 🟧 **Orange County** (Priority #3)
-* 🟥 **Los Angeles County** (Priority #4)
+* 🟦 **San Bernardino County** 
+* 🟩 **Riverside County**
+* 🟧 **Orange County**
+* 🟥 **Los Angeles County**
 
 ### 🔍 Extracts job details:
 * 🧑‍💼 **Job Title**
@@ -20,7 +20,7 @@ It launches a headless Chrome browser, parses listings with BeautifulSoup, and d
 * 🔗 **Direct Posting URL**
 
 ### 📊 Smart Sorting & UI:
-* ⬇️ **Priority Sorting:** Listings are grouped by County preference (San Bernardino first), then sorted by **Newest Posting** within that county.
+* ⬇️ **Priority Sorting:** Listings are grouped by **Newest Posting** first.
 * ⚡ **Headless Selenium:** Handles dynamic JavaScript content.
 * 🎨 **Visual Badges:** Color-coded indicators for locations and districts.
 
