@@ -2,6 +2,7 @@ from flask import Flask, render_template, redirect, url_for, request, flash, ses
 from dotenv import load_dotenv
 load_dotenv()
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from authlib.integrations.flask_client import OAuth
 import json
 import os
 from bs4 import BeautifulSoup
@@ -10,24 +11,85 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 import time
-from flask_dance.contrib.google import make_google_blueprint, google
+# Google OAuth removed per user request. Flask-Dance integration disabled.
+import logging
+import traceback
+
 
 
 app = Flask(__name__)
-app.secret_key = 'replace-this-with-a-secret-key'  # Needed for session management
+# Use an environment-provided secret key in production
+app.secret_key = os.getenv('FLASK_SECRET_KEY', 'replace-this-with-a-secret-key')  # Needed for session management
 
-# --- Google OAuth Setup ---
-# You must set these environment variables or replace with your credentials
-import os
-GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', 'your-google-client-id')
-GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', 'your-google-client-secret')
-google_bp = make_google_blueprint(
-    client_id=GOOGLE_CLIENT_ID,
-    client_secret=GOOGLE_CLIENT_SECRET,
-    scope=["profile", "email"],
-    redirect_url="/login/google/authorized"
+# --- Basic error logging (write to console only, not a file) ---
+logging.basicConfig(
+    level=logging.ERROR,
+    format='%(asctime)s %(levelname)s: %(message)s'
 )
-app.register_blueprint(google_bp, url_prefix="/login")
+
+# Google OAuth (Authlib) setup
+app.config['GOOGLE_CLIENT_ID'] = os.getenv('GOOGLE_CLIENT_ID')
+app.config['GOOGLE_CLIENT_SECRET'] = os.getenv('GOOGLE_CLIENT_SECRET')
+
+oauth = OAuth(app)
+oauth.register(
+    name='google',
+    client_id=app.config.get('GOOGLE_CLIENT_ID'),
+    client_secret=app.config.get('GOOGLE_CLIENT_SECRET'),
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={'scope': 'openid email profile'},
+)
+
+
+@app.errorhandler(500)
+def handle_500(e):
+    # Log full traceback to error.log for debugging
+    tb = traceback.format_exc()
+    logging.error('Internal Server Error:\n%s', tb)
+    # Return a minimal 500 response (template removed)
+    return ("<h1>Internal Server Error</h1>"
+            "<p>Something went wrong on the server. The error has been logged.</p>"), 500
+
+
+# --- Google OAuth routes ---
+@app.route('/login/google')
+def login_google():
+    # Redirect user to Google's OAuth 2.0 authorization page
+    # Allow forcing the redirect URI via env var so it exactly matches
+    # what's registered in Google Cloud Console (e.g. use 127.0.0.1 vs localhost).
+    redirect_uri = os.getenv('OAUTH_REDIRECT_URI') or url_for('auth_google', _external=True)
+    return oauth.google.authorize_redirect(redirect_uri)
+
+
+@app.route('/auth/google')
+def auth_google():
+    # Google will redirect back to this route after authorization
+    try:
+        token = oauth.google.authorize_access_token()
+        # Retrieve user info from Google's UserInfo endpoint
+        resp = oauth.google.get('userinfo')
+        userinfo = resp.json()
+        email = userinfo.get('email')
+        name = userinfo.get('name') or userinfo.get('given_name')
+
+        if not email:
+            flash('Could not retrieve email from Google account.', 'danger')
+            return redirect(url_for('login'))
+
+        global USERS
+        USERS = load_users()
+        # Create a new user entry if not present. Password is None for OAuth users.
+        if email not in USERS:
+            USERS[email] = {'password': None, 'name': name, 'oauth': 'google'}
+            save_users(USERS)
+
+        login_user(User(email))
+        return redirect(url_for('home'))
+
+    except Exception as e:
+        logging.error('Google OAuth error: %s', e)
+        flash('Google sign-in failed. Try again or use username/password.', 'danger')
+        return redirect(url_for('login'))
 
 # --- Flask-Login Setup ---
 login_manager = LoginManager()
@@ -216,25 +278,7 @@ def register():
     return render_template('register.html')
 
 
-# --- Google OAuth Login Route ---
-@app.route('/login/google')
-def login_google():
-    if not google.authorized:
-        return redirect(url_for('google.login'))
-    resp = google.get("/oauth2/v2/userinfo")
-    if resp.ok:
-        user_info = resp.json()
-        username = user_info["email"]
-        global USERS
-        USERS = load_users()
-        if username not in USERS:
-            USERS[username] = {"password": "oauth"}
-            save_users(USERS)
-        login_user(User(username))
-        flash(f"Logged in as {username}", "success")
-        return redirect(url_for('home'))
-    flash("Failed to log in with Google", "danger")
-    return redirect(url_for('login'))
+# Google sign-in route removed. Use username/password login and registration routes.
 
 # --- Login Route ---
 @app.route('/login', methods=['GET', 'POST'])
