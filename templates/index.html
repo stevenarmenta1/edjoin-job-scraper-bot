@@ -181,8 +181,81 @@
         .header-content {
             margin-right: 80px;
         }
+        /* ===== DARK MODE STYLES ===== */
+        body.dark-mode {
+            background-color: #121212 !important;
+            color: #e0e0e0 !important;
+        }
+
+        .dark-mode .header-area {
+            background: linear-gradient(135deg, #0f2439 0%, #1e3a5f 100%) !important;
+        }
+
+        .dark-mode .job-card {
+            background-color: #1e1e1e !important;
+            border-left-color: #444 !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
+        }
+
+        .dark-mode .job-card:hover {
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6) !important;
+            transform: translateY(-4px);
+        }
+
+        .dark-mode .sort-controls,
+        .dark-mode .search-box,
+        .dark-mode .alert-info {
+            background-color: #2d2d2d !important;
+            color: #e0e0e0 !important;
+            border: 1px solid #444 !important;
+        }
+
+        .dark-mode .search-box::placeholder {
+            color: #aaa !important;
+        }
+
+        .dark-mode .sort-controls button {
+            background-color: #3a5a8c !important;
+        }
+
+        .dark-mode .sort-controls button:hover {
+            background-color: #4a70b0 !important;
+        }
+
+        .dark-mode .sort-controls button.active {
+            background-color: #ffb307 !important;
+            color: black !important;
+        }
+
+        .dark-mode .badge.bg-secondary {
+            background-color: #555 !important;
+        }
+
+        .dark-mode a {
+            color: #8ccfff !important;
+        }
+
+        .dark-mode a:hover {
+            color: #b3e0ff !important;
+        }
+
+        .dark-mode .high-pay {
+            background-color: #2d5a2d !important;
+            color: #90ee90 !important;
+        }
+
+        .dark-mode .deadline-urgent {
+            color: #ff6b6b !important;
+        }
+
+        /* Smooth transition */
+        * {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
     </style>
 </head>
+
 <body>
 
 <div class="container">
@@ -401,6 +474,7 @@
     // Initialize on load
     window.addEventListener('load', initializeJobs);
 </script>
+<script src="{{ url_for('static', filename='js/script.js') }}?v=1"></script>
 
 </body>
 </html>
